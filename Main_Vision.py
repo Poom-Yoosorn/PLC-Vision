@@ -6,6 +6,7 @@ proximityVar = "BottleDetected"
 ejectVar = "EjectBottle"
 exitVar = "exitScript"
 sessionVar = "sessionNumber"
+LastsessionVar = "sessionNumber_pyProcess"
 
 plcVarPath = ["0:Objects",
               "2:DeviceSet",
@@ -16,8 +17,12 @@ plcVarPath = ["0:Objects",
               "4:POU_Main",
               "var"]
 img_raw = None
+
+cam_imageName = "cam.jpg"
+
 imageName = "bottle_label.jpg"
 #imageName = "bottle.jpg"
+
 
 lastSession = 0
 
@@ -60,10 +65,29 @@ def exitScript():
     
     return value
 
-def grabFrame():
+def grabFrame(imageName):
     global img_raw
     pic_directory = "imageBottle//" + imageName
     img_raw = cv2.imread(pic_directory, cv2.IMREAD_GRAYSCALE)
+    
+def takeCamera():
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+    if not cap.isOpened():
+        print("Cannot open camera")
+        exit()
+
+    ret, frame = cap.read()
+    cap.release()
+
+    if not ret:
+        print("Can't receive frame (stream end?). Exiting ...")
+    else:
+        pic_directory = "imageBottle//" + cam_imageName
+        cv2.imwrite(pic_directory, frame)
+        print("Photo saved as :" + str(pic_directory))
+    
+
 
 def checkLabel(img_fillter,img_raw):
     contours, hier = cv2.findContours(img_fillter, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -74,6 +98,7 @@ def checkLabel(img_fillter,img_raw):
         area = cv2.contourArea(cnt)
         if (len(ap)==4 and area<25000 and area>142):
             cv2.drawContours(img_raw, cnt,-1,(0,255,0),2)
+            cv2.imwrite("imageBottle//JustLook.jpg", img_raw)
             print("No Issue.Label Is Detected")
             return 1
         
@@ -97,23 +122,37 @@ def getSessionNumber():
     var_path = objects.get_child(plcVarPath)
     
     value = var_path.get_value()
-    return value    
+    return value   
+
+def setSessionNumber(val):
+    global objects,LastsessionVar
+    plcVarPath[len(plcVarPath)-1] = str("4:") + str(LastsessionVar)
+    var_path = objects.get_child(plcVarPath)
+    
+    var_type = var_path.get_data_type_as_variant_type()
+    ret = var_path.set_value(val,var_type)
+    
 
 if __name__ == '__main__':
     
     connectOPCUA()
-    
+
     while(1):
         if exitScript():
             break
         else:
-           if checkSensor() and lastSession != getSessionNumber():                              
-               lastSession = getSessionNumber() 
-                   
-                   
-               grabFrame()
+           if checkSensor() and lastSession != getSessionNumber():  
+               takeCamera()   
+               grabFrame(cam_imageName)
+               
                if not classifyCameraImage():
                    activateEject()
+                   
+                   
+               lastSession = getSessionNumber() 
+               setSessionNumber(lastSession)   
+
+
 
 
 

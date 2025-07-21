@@ -36,6 +36,7 @@
         <Node name="ProximityTimer" type="T_TON" access="ReadWrite" />
         <Node name="SessionCounter" type="T_CTU" access="ReadWrite" />
         <Node name="sessionNumber" type="T_INT" access="ReadWrite" />
+        <Node name="sessionNumber_pyProcess" type="T_INT" access="ReadWrite" />
       </Node>
     </Node>
   </NodeList>
